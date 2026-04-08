@@ -1,10 +1,25 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function QuestionChat({ apiUrl, analysisId }) {
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [qaPairs, setQaPairs] = useState([]);
+
+  useEffect(() => {
+    if (!analysisId) return;
+    fetch(`${apiUrl}/api/analyses/${analysisId}/messages`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        setQaPairs(
+          data.map((msg) => ({
+            question: msg.question,
+            answer: msg.answer,
+          })),
+        );
+      })
+      .catch(() => {});
+  }, [apiUrl, analysisId]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();

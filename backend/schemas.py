@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 RiskLevel = Literal["high", "medium", "low"]
 ContractType = Literal[
@@ -39,8 +39,7 @@ class AnalysisListItem(BaseModel):
     created_at: datetime
     preview: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AnalysisDetail(BaseModel):
@@ -54,8 +53,7 @@ class AnalysisDetail(BaseModel):
     summary: str
     clauses: List[ClauseResult]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DeleteResponse(BaseModel):
@@ -68,6 +66,15 @@ class AskRequest(BaseModel):
 
 class AskResponse(BaseModel):
     answer: str
+
+
+class ChatMessageItem(BaseModel):
+    id: int
+    created_at: datetime
+    question: str
+    answer: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ErrorResponse(BaseModel):

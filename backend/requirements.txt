@@ -6,5 +6,5 @@ alembic
 python-multipart
 python-dotenv
 pydantic
-requests
+httpx
 pypdf

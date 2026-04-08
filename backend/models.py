@@ -20,6 +20,12 @@ class Analysis(Base):
         back_populates="analysis",
         cascade="all, delete-orphan",
     )
+    chat_messages = relationship(
+        "ChatMessage",
+        back_populates="analysis",
+        cascade="all, delete-orphan",
+        order_by="ChatMessage.created_at",
+    )
 
 
 class RiskClause(Base):
@@ -33,3 +39,16 @@ class RiskClause(Base):
     suggestion = Column(Text, nullable=False)
 
     analysis = relationship("Analysis", back_populates="risk_clauses")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    __table_args__ = {"extend_existing": True}
+
+    id = Column(Integer, primary_key=True, index=True)
+    analysis_id = Column(Integer, ForeignKey("analyses.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    question = Column(Text, nullable=False)
+    answer = Column(Text, nullable=False)
+
+    analysis = relationship("Analysis", back_populates="chat_messages")

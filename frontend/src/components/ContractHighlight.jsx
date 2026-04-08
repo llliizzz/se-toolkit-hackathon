@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 function escapeHtml(text) {
   return text
@@ -9,8 +9,7 @@ function escapeHtml(text) {
     .replaceAll("'", "&#39;");
 }
 
-export default function ContractHighlight({ analysis }) {
-  const [activeClauseIndex, setActiveClauseIndex] = useState(null);
+export default function ContractHighlight({ analysis, activeClauseIndex, onClauseClick }) {
   const panelRef = useRef(null);
 
   const highlightHtml = useMemo(() => {
@@ -65,12 +64,20 @@ export default function ContractHighlight({ analysis }) {
   useEffect(() => {
     const handleDocumentClick = (event) => {
       if (!panelRef.current?.contains(event.target)) {
-        setActiveClauseIndex(null);
+        onClauseClick(null);
       }
     };
     document.addEventListener("click", handleDocumentClick);
     return () => document.removeEventListener("click", handleDocumentClick);
-  }, []);
+  }, [onClauseClick]);
+
+  useEffect(() => {
+    if (activeClauseIndex === null || !panelRef.current) {
+      return;
+    }
+    const mark = panelRef.current.querySelector(`[data-clause-index="${activeClauseIndex}"]`);
+    mark?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [activeClauseIndex]);
 
   const activeClause =
     activeClauseIndex === null ? null : analysis.clauses[Number(activeClauseIndex)] || null;
@@ -91,7 +98,8 @@ export default function ContractHighlight({ analysis }) {
           if (!mark) {
             return;
           }
-          setActiveClauseIndex(mark.getAttribute("data-clause-index"));
+          const index = Number(mark.getAttribute("data-clause-index"));
+          onClauseClick(activeClauseIndex === index ? null : index);
         }}
         dangerouslySetInnerHTML={{ __html: highlightHtml }}
       />

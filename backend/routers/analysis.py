@@ -3,12 +3,12 @@ import os
 from io import BytesIO
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+import httpx
 from pypdf import PdfReader
-import requests
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Analysis, RiskClause
+from models import Analysis, ChatMessage, RiskClause
 from schemas import (
     AnalyzeRequest,
     AnalysisDetail,
@@ -16,11 +16,13 @@ from schemas import (
     AnalysisResult,
     AskRequest,
     AskResponse,
+    ChatMessageItem,
     ClauseResult,
     DeleteResponse,
 )
 
 router = APIRouter(prefix="/api", tags=["analysis"])
+MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
 
 SYSTEM_PROMPT = (
     "You are a legal risk analysis assistant. Your job is to read contract text "
@@ -121,17 +123,23 @@ async def _get_contract_text(request: Request, contract_text: str | None, upload
     resolved_text = (contract_text or "").strip() or (uploaded_text or "").strip()
     if not resolved_text:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Contract text is required")
+    if len(resolved_text) < 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Contract text is too short for a meaningful analysis (minimum 50 characters)",
+        )
+    if len(resolved_text) > 100_000:
+        resolved_text = resolved_text[:100_000]
     return resolved_text
 
 
-def _openrouter_chat(messages: list[dict[str, str]], response_format: dict | None = None) -> dict:
+async def _openrouter_chat(messages: list[dict[str, str]], response_format: dict | None = None) -> dict:
     api_key = os.getenv("OPENROUTER_API_KEY")
-    model = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
     if not api_key:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="OPENROUTER_API_KEY is not configured")
 
     payload = {
-        "model": model,
+        "model": MODEL,
         "messages": messages,
         "temperature": 0,
     }
@@ -139,18 +147,18 @@ def _openrouter_chat(messages: list[dict[str, str]], response_format: dict | Non
         payload["response_format"] = response_format
 
     try:
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost:5173",
-                "X-Title": "Legal Clause Risk Analyzer",
-            },
-            json=payload,
-            timeout=90,
-        )
-        response.raise_for_status()
+        async with httpx.AsyncClient(timeout=90) as client:
+            response = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "http://localhost:5173",
+                    "X-Title": "Legal Clause Risk Analyzer",
+                },
+                json=payload,
+            )
+            response.raise_for_status()
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"LLM request failed: {exc}") from exc
 
@@ -176,8 +184,8 @@ def _compute_safety_score(clauses: list[ClauseResult]) -> tuple[int, str]:
     return safety_score, explanation
 
 
-def _call_llm(contract_text: str) -> AnalysisResult:
-    data = _openrouter_chat(
+async def _call_llm(contract_text: str) -> AnalysisResult:
+    data = await _openrouter_chat(
         [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": USER_PROMPT_TEMPLATE.format(contract_text=contract_text)},
@@ -198,8 +206,8 @@ def _call_llm(contract_text: str) -> AnalysisResult:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="LLM response parsing failed") from exc
 
 
-def _ask_llm(contract_text: str, result_json: str, question: str) -> str:
-    data = _openrouter_chat(
+async def _ask_llm(contract_text: str, result_json: str, question: str) -> str:
+    data = await _openrouter_chat(
         [
             {"role": "system", "content": ASK_SYSTEM_PROMPT},
             {
@@ -241,7 +249,7 @@ async def analyze_contract(
     db: Session = Depends(get_db),
 ):
     text = await _get_contract_text(request, contract_text, file)
-    result = _call_llm(text)
+    result = await _call_llm(text)
 
     try:
         analysis = Analysis(
@@ -331,5 +339,35 @@ async def ask_about_analysis(analysis_id: int, payload: AskRequest, db: Session 
     if not question:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Question is required")
 
-    answer = _ask_llm(analysis.contract_text, analysis.result_json, question)
+    answer = await _ask_llm(analysis.contract_text, analysis.result_json, question)
+
+    try:
+        msg = ChatMessage(
+            analysis_id=analysis_id,
+            question=question,
+            answer=answer,
+        )
+        db.add(msg)
+        db.commit()
+    except Exception:
+        db.rollback()
+
     return AskResponse(answer=answer)
+
+
+@router.get("/analyses/{analysis_id}/messages", response_model=list[ChatMessageItem])
+def get_chat_messages(analysis_id: int, db: Session = Depends(get_db)):
+    try:
+        analysis = db.query(Analysis).filter(Analysis.id == analysis_id).first()
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database read failed: {exc}") from exc
+
+    if analysis is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found")
+
+    return (
+        db.query(ChatMessage)
+        .filter(ChatMessage.analysis_id == analysis_id)
+        .order_by(ChatMessage.created_at)
+        .all()
+    )

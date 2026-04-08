@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ContractInput from "./components/ContractInput";
 import ContractHighlight from "./components/ContractHighlight";
 import HistoryList from "./components/HistoryList";
@@ -12,10 +12,12 @@ const API_URL =
 export default function App() {
   const [activeTab, setActiveTab] = useState("analyze");
   const [analysis, setAnalysis] = useState(null);
+  const [activeClauseIndex, setActiveClauseIndex] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
   const [showOnboarding, setShowOnboarding] = useState(
     () => localStorage.getItem("onboarding_done") !== "true",
   );
+  const analysisRef = useRef(null);
 
   useEffect(() => {
     document.body.classList.toggle("dark", theme === "dark");
@@ -25,6 +27,14 @@ export default function App() {
   const dismissOnboarding = () => {
     localStorage.setItem("onboarding_done", "true");
     setShowOnboarding(false);
+  };
+
+  const handleAnalyze = (data) => {
+    setAnalysis(data);
+    setActiveClauseIndex(null);
+    setTimeout(() => {
+      analysisRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
   };
 
   return (
@@ -72,20 +82,28 @@ export default function App() {
           <div className="analyze-panel">
             <ContractInput
               apiUrl={API_URL}
-              onAnalyze={setAnalysis}
+              onAnalyze={handleAnalyze}
               showOnboarding={showOnboarding}
               onDismissOnboarding={dismissOnboarding}
             />
           </div>
 
           {analysis ? (
-            <>
+            <div ref={analysisRef}>
               <div className="analysis-layout">
-                <RiskReport analysis={analysis} />
-                <ContractHighlight analysis={analysis} />
+                <RiskReport
+                  analysis={analysis}
+                  activeClauseIndex={activeClauseIndex}
+                  onClauseClick={setActiveClauseIndex}
+                />
+                <ContractHighlight
+                  analysis={analysis}
+                  activeClauseIndex={activeClauseIndex}
+                  onClauseClick={setActiveClauseIndex}
+                />
               </div>
               <QuestionChat apiUrl={API_URL} analysisId={analysis.id} />
-            </>
+            </div>
           ) : null}
         </section>
       ) : (

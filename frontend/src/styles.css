@@ -426,6 +426,11 @@ input[type="file"] {
   border: 1px solid var(--border);
 }
 
+.clause-card-active {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .clause-card blockquote {
   margin: 14px 0;
   padding: 14px 16px;

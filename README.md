@@ -64,15 +64,15 @@ Typical use cases:
 - [x] Paste contract text or upload `.txt` / `.pdf` files
 - [x] Extract readable text from PDF documents
 - [x] LLM-powered contract risk analysis via OpenRouter
-- [x] Safety score (0-100) with plain-language explanation
+- [x] Safety score (0–100) with plain-language explanation
 - [x] Contract type detection (NDA, Freelance Agreement, Employment Contract, etc.)
 - [x] Overall risk level and contract summary
 - [x] Per-clause explanations and actionable suggestions
-- [x] Highlighted contract text - risky excerpts marked by severity
+- [x] Highlighted contract text — risky excerpts marked by severity
 - [x] Clicking a clause card syncs with the highlighted source text, and vice versa
-- [x] Follow-up Q&A - ask questions about a previously analyzed contract
+- [x] Follow-up Q&A — ask questions about a previously analyzed contract
 - [x] Full analysis and chat history persisted in PostgreSQL
-- [x] History tab - reopen or delete previous analyses
+- [x] History tab — reopen or delete previous analyses
 - [x] Copy full report to clipboard
 - [x] Dark mode toggle
 - [x] Animated multi-step progress bar during analysis
@@ -80,7 +80,7 @@ Typical use cases:
 - [x] "Try an example contract" autofill button
 - [x] First-use onboarding tooltip
 - [x] Auto-scroll to results after analysis
-- [x] Async OpenRouter requests (`httpx`) - no event loop blocking
+- [x] Async OpenRouter requests (`httpx`) — no event loop blocking
 - [x] Deterministic server-side safety score for reproducible results
 - [x] Backend validation for short and oversized contract text
 - [x] Docker Compose healthcheck and restart policy for reliable startup
@@ -98,13 +98,13 @@ Typical use cases:
 
 ## How it works
 
-### 1 - Input
+### 1 — Input
 The user pastes contract text, uploads a `.txt` or `.pdf` file, or loads the built-in example contract. The interface validates the input length and shows a live character count before analysis starts.
 
-### 2 - Analysis
-The backend sends the contract text to OpenRouter with a structured prompt. The LLM returns a JSON object containing the risk level, contract type, summary, and a list of risky clauses. The server then calculates a deterministic safety score based on the number and severity of detected clauses - this makes the score stable and reproducible across repeated runs.
+### 2 — Analysis
+The backend sends the contract text to OpenRouter with a structured prompt. The LLM returns a JSON object containing the risk level, contract type, summary, and a list of risky clauses. The server then calculates a deterministic safety score based on the number and severity of detected clauses — this makes the score stable and reproducible across repeated runs.
 
-### 3 - Report
+### 3 — Report
 The page scrolls to the results area, which shows:
 
 - a safety score ring (green / orange / red by range)
@@ -115,7 +115,7 @@ The page scrolls to the results area, which shows:
 
 The original contract text is shown alongside the report with color-coded highlights for each risky excerpt. Clicking a clause card jumps to the matching highlight; clicking a highlight opens an explanation popup.
 
-### 4 - Follow-up Q&A
+### 4 — Follow-up Q&A
 Each saved analysis supports follow-up questions. The answer is generated using both the original contract and the prior analysis result. All Q&A pairs are saved to the database and reloaded when the analysis is reopened from History.
 
 ---
@@ -265,7 +265,7 @@ se-toolkit-hackathon/
 ## Current limitations
 
 - PDF support works only for text-based PDFs; scanned image PDFs require OCR (not yet implemented)
-- No user authentication - analysis history is shared across all users of the same deployment
+- No user authentication — analysis history is shared across all users of the same deployment
 - No export to PDF or clause comparison across multiple contracts
 - The app explains legal risk in plain language but does not provide binding legal advice
 
@@ -273,4 +273,4 @@ se-toolkit-hackathon/
 
 ## License
 
-[MIT](LICENSE) - e.sotnikova@innopolis.university
+[MIT](LICENSE) — e.sotnikova@innopolis.university

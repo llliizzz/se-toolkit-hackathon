@@ -4,15 +4,11 @@ AI assistant that analyzes contracts and highlights legal risks in simple langua
 
 ## Demo
 
-Add screenshots here after deployment.
-
 ### Screenshot 1: Contract input screen
-
-Place image at `docs/screenshots/input-screen.png`
+![Contract input screen](./docs/screenshots/input-screen.png)
 
 ### Screenshot 2: Risk analysis results
-
-Place image at `docs/screenshots/risk-report.png`
+![Risk analysis results](./docs/screenshots/risk-report.png)
 
 ## Product context
 

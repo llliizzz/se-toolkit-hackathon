@@ -5,18 +5,24 @@ import HistoryList from "./components/HistoryList";
 import QuestionChat from "./components/QuestionChat";
 import RiskReport from "./components/RiskReport";
 
+const configuredApiUrl = import.meta.env.VITE_API_URL;
+const isLocalBrowserHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+const shouldUseDynamicVmHost =
+  configuredApiUrl &&
+  configuredApiUrl.includes("localhost") &&
+  !isLocalBrowserHost;
+
 const API_URL =
-  import.meta.env.VITE_API_URL ||
-  `${window.location.protocol}//${window.location.hostname}:8000`;
+  shouldUseDynamicVmHost || !configuredApiUrl
+    ? `${window.location.protocol}//${window.location.hostname}:8000`
+    : configuredApiUrl;
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("analyze");
   const [analysis, setAnalysis] = useState(null);
   const [activeClauseIndex, setActiveClauseIndex] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
-  const [showOnboarding, setShowOnboarding] = useState(
-    () => localStorage.getItem("onboarding_done") !== "true",
-  );
+  const [showOnboarding, setShowOnboarding] = useState(true);
   const analysisRef = useRef(null);
 
   useEffect(() => {
@@ -25,7 +31,6 @@ export default function App() {
   }, [theme]);
 
   const dismissOnboarding = () => {
-    localStorage.setItem("onboarding_done", "true");
     setShowOnboarding(false);
   };
 
